@@ -1,0 +1,157 @@
+-- ===== FISH IT FINAL GUI INTERACTIVE =====
+-- Author: ChatGPT
+
+-- ===== Load Rayfield UI =====
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source"))()
+local Window = Rayfield:CreateWindow({
+   Name = "Fish It! Ultimate GUI Final",
+   LoadingTitle = "Loading Fish It! GUI",
+   LoadingSubtitle = "by ChatGPT",
+   ConfigurationSaving = {Enabled = true, FolderName = "FishItConfig", FileName = "Config"},
+   KeySystem = false
+})
+
+-- ===== SETTINGS =====
+local settings = {
+    autoCatchFish=false, autoPerfect=false, autoAmazing=false,
+    autoSell=false, sellThreshold=0, floatOnWater=false,
+    tradeNoDelay=false, infinityJump=false, unlimitedJump=false,
+    walkSpeed=16, teleportTargetPlayer=nil, autoBuyWeather=false,
+    antiLag=true, antiAFK=true, autoFarmEvent=false
+}
+
+-- ===== SERVICES =====
+local Players=game:GetService("Players")
+local LocalPlayer=Players.LocalPlayer
+local char=LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local hum=char:WaitForChild("Humanoid")
+local rs=game:GetService("ReplicatedStorage")
+local UIS=game:GetService("UserInputService")
+local TS=game:GetService("TweenService")
+local RS=game:GetService("RunService")
+
+-- ===== POP-UP GUI SETUP =====
+local screenGui=Instance.new("ScreenGui")
+screenGui.Name="FishItPopup"
+screenGui.Parent=game.CoreGui
+
+local mainFrame=Instance.new("Frame")
+mainFrame.Size=UDim2.new(0,600,0,400)
+mainFrame.Position=UDim2.new(0.5,-300,0.5,-200)
+mainFrame.BackgroundColor3=Color3.fromRGB(30,30,30)
+mainFrame.BorderSizePixel=0
+mainFrame.Parent=screenGui
+
+-- Minimize button
+local minimizeBtn=Instance.new("TextButton")
+minimizeBtn.Size=UDim2.new(0,30,0,30)
+minimizeBtn.Position=UDim2.new(1,-35,0,5)
+minimizeBtn.Text="_"
+minimizeBtn.Parent=mainFrame
+local isMinimized=false
+minimizeBtn.MouseButton1Click:Connect(function()
+    isMinimized=not isMinimized
+    if isMinimized then mainFrame.Size=UDim2.new(0,200,0,35)
+    else mainFrame.Size=UDim2.new(0,600,0,400) end
+end)
+
+-- Close button with Yes/No confirmation
+local closeBtn=Instance.new("TextButton")
+closeBtn.Size=UDim2.new(0,30,0,30)
+closeBtn.Position=UDim2.new(1,-70,0,5)
+closeBtn.Text="X"
+closeBtn.Parent=mainFrame
+closeBtn.MouseButton1Click:Connect(function()
+    local confirmFrame=Instance.new("Frame")
+    confirmFrame.Size=UDim2.new(0,250,0,100)
+    confirmFrame.Position=UDim2.new(0.5,-125,0.5,-50)
+    confirmFrame.BackgroundColor3=Color3.fromRGB(50,50,50)
+    confirmFrame.Parent=screenGui
+    local txt=Instance.new("TextLabel")
+    txt.Text="Are you sure you want to close GUI?"
+    txt.Size=UDim2.new(1,0,0.5,0)
+    txt.Parent=confirmFrame
+    txt.TextColor3=Color3.new(1,1,1)
+    local yesBtn=Instance.new("TextButton")
+    yesBtn.Size=UDim2.new(0.4,0,0.3,0)
+    yesBtn.Position=UDim2.new(0.05,0,0.6,0)
+    yesBtn.Text="Yes"
+    yesBtn.Parent=confirmFrame
+    yesBtn.MouseButton1Click:Connect(function() screenGui:Destroy() end)
+    local noBtn=Instance.new("TextButton")
+    noBtn.Size=UDim2.new(0.4,0,0.3,0)
+    noBtn.Position=UDim2.new(0.55,0,0.6,0)
+    noBtn.Text="No"
+    noBtn.Parent=confirmFrame
+    noBtn.MouseButton1Click:Connect(function() confirmFrame:Destroy() end)
+end)
+
+-- ===== PLAYER TAB =====
+local PlayerTab=Window:CreateTab("Player")
+local playerList={} local PlayerDropdown
+local function refreshPlayers()
+    playerList={} for _,p in pairs(Players:GetPlayers()) do if p~=LocalPlayer then table.insert(playerList,p.Name) end end
+    if PlayerDropdown then PlayerDropdown:Refresh(playerList) end
+end
+PlayerDropdown=PlayerTab:CreateDropdown({Name="Teleport to Player",Options=playerList,CurrentOption=nil,Callback=function(option)
+    local target=Players:FindFirstChild(option)
+    if target and target.Character then char:SetPrimaryPartCFrame(target.Character:GetPrimaryPartCFrame()) end
+end})
+PlayerTab:CreateButton({Name="Refresh Player List",Callback=refreshPlayers})
+PlayerTab:CreateToggle({Name="Float on Water",CurrentValue=false,Callback=function(val) settings.floatOnWater=val end})
+PlayerTab:CreateToggle({Name="Trade No Delay",CurrentValue=false,Callback=function(val) settings.tradeNoDelay=val end})
+PlayerTab:CreateToggle({Name="Infinity Jump",CurrentValue=false,Callback=function(val) settings.infinityJump=val end})
+PlayerTab:CreateToggle({Name="Unlimited Jump",CurrentValue=false,Callback=function(val) settings.unlimitedJump=val end})
+PlayerTab:CreateSlider({Name="Walk Speed",Range={16,200},Increment=1,CurrentValue=16,Callback=function(val) settings.walkSpeed=val; hum.WalkSpeed=val end})
+
+-- ===== FISHING TAB =====
+local FishingTab=Window:CreateTab("Fishing")
+FishingTab:CreateToggle({Name="Auto Catch & Auto Fish",CurrentValue=false,Callback=function(val) settings.autoCatchFish=val end})
+FishingTab:CreateToggle({Name="Auto Perfect",CurrentValue=false,Callback=function(val) settings.autoPerfect=val end})
+FishingTab:CreateToggle({Name="Auto Amazing",CurrentValue=false,Callback=function(val) settings.autoAmazing=val end})
+
+-- ===== AUTO SELL TAB =====
+local AutoSellTab=Window:CreateTab("Auto Sell")
+AutoSellTab:CreateToggle({Name="Auto Sell",CurrentValue=false,Callback=function(val) settings.autoSell=val end})
+AutoSellTab:CreateSlider({Name="Sell Threshold",Range={0,100000},Increment=100,CurrentValue=0,Callback=function(val) settings.sellThreshold=val end})
+
+-- ===== BUY WEATHER TAB =====
+local WeatherTab=Window:CreateTab("Buy Weather")
+local weathers={"Cloud","Storm","Wind","Radiant","Snow","Shark Hunt"}
+for _,w in pairs(weathers) do
+    WeatherTab:CreateButton({Name="Spawn "..w,Callback=function() pcall(function() rs.Remotes.SpawnWeather:FireServer(w) end) end})
+end
+WeatherTab:CreateToggle({Name="Auto Buy Weather (Except Shark Hunt)",CurrentValue=false,Callback=function(val) settings.autoBuyWeather=val end})
+
+-- ===== TELEPORT TAB =====
+local TeleportTab=Window:CreateTab("Teleport")
+local locations={["Coral Reefs"]=Vector3.new(-2945,66,2248),["Kohana"]=Vector3.new(-645,16,606),["Weather Machine"]=Vector3.new(-1535,2,1917),
+["Lost Isle [Sisypuhus]"]=Vector3.new(-3703,-136,-1019),["Winter Fest"]=Vector3.new(1616,4,3280),["Esoteric Depths"]=Vector3.new(3214,-1303,1411),
+["Tropical Grove"]=Vector3.new(-2047,6,3662),["Stingray Shores"]=Vector3.new(2,4,2839),["Lost Isle [Treasure Room]"]=Vector3.new(-3594,-285,-1635),
+["Lost Isle [Lost Shore]"]=Vector3.new(-3672,70,-912),["Kohana Volcano"]=Vector3.new(-512,24,191),["Crater Island"]=Vector3.new(1019,20,5071)}
+for name,pos in pairs(locations) do TeleportTab:CreateButton({Name="Teleport "..name,Callback=function() char:SetPrimaryPartCFrame(CFrame.new(pos)) end}) end
+
+-- ===== EVENT TAB =====
+local EventTab=Window:CreateTab("Event")
+local eventList={} local EventDropdown
+EventDropdown=EventTab:CreateDropdown({Name="Teleport to Event",Options=eventList,CurrentOption=nil,Callback=function(option)
+    local pos=eventList[option] if pos then char:SetPrimaryPartCFrame(CFrame.new(pos)) end
+end})
+EventTab:CreateButton({Name="Refresh Event List",Callback=function()
+    eventList={["Event1"]=Vector3.new(100,10,100),["Event2"]=Vector3.new(200,10,200)}
+    EventDropdown:Refresh({"Event1","Event2"})
+end})
+EventTab:CreateToggle({Name="Auto Farm Event",CurrentValue=false,Callback=function(val) settings.autoFarmEvent=val end})
+
+-- ===== SETTINGS TAB =====
+local SettingsTab=Window:CreateTab("Settings")
+SettingsTab:CreateButton({Name="Server Info",Callback=function() print(game.JobId,game.PlaceId) end})
+SettingsTab:CreateToggle({Name="Anti Lag / Low Texture",CurrentValue=true,Callback=function(val) settings.antiLag=val end})
+SettingsTab:CreateToggle({Name="Anti AFK",CurrentValue=true,Callback=function(val) settings.antiAFK=val end})
+SettingsTab:CreateButton({Name="Rejoin Server",Callback=function() game:GetService("TeleportService"):Teleport(game.PlaceId,LocalPlayer) end})
+SettingsTab:CreateButton({Name="Buy Rod",Callback=function() pcall(function() rs.Remotes.BuyRod:InvokeServer() end) end})
+SettingsTab:CreateButton({Name="Buy Bait",Callback=function() pcall(function() rs.Remotes.BuyBait:InvokeServer() end) end})
+SettingsTab:CreateButton({Name="Spawn Boat",Callback=function() pcall(function() rs.Remotes.SpawnBoat:FireServer() end) end})
+
+-- ===== AUTO LOOP =====
+spawn(function()
